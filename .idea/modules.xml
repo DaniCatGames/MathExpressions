@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/mathts.iml" filepath="$PROJECT_DIR$/.idea/mathts.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/MathExpressions.iml" filepath="$PROJECT_DIR$/.idea/MathExpressions.iml" />
     </modules>
   </component>
 </project>
