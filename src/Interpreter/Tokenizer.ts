@@ -1,26 +1,7 @@
 import { Functions } from "./Functions";
+import { Token, TokenType } from "./Misc";
 
-enum TokenType {
-	Literal = "Literal",
-	Variable = "Variable",
-	Operator = "Operator",
-	Function = "Function",
-	FunctionArgumentSeparator = "FunctionArgumentSeparator",
-	LeftParenthesis = "LeftParenthesis",
-	RightParenthesis = "RightParenthesis",
-}
-
-class Token {
-	public tokenType: TokenType;
-	public value: string | number;
-
-	constructor(tokenType: TokenType, value: string | number) {
-		this.tokenType = tokenType;
-		this.value = value;
-	}
-}
-
-export function tokenize(expression: string) {
+export function tokenize(expression: string): Token[] {
 	const result: Token[] = [];
 	const expressionSplit = expression.split("");
 
