@@ -1,4 +1,4 @@
-<div align='center'>
+<div style="text-align: center">
 
 <h1>Math Expressions</h1>
 <h4> <span> · </span> <a href="https://github.com/DaniCatGames/MathExpressions/blob/master/README.md"> Documentation </a> <span> · </span> <a href="https://github.com/DaniCatGames/MathExpressions/issues"> Report Bug </a> <span> · </span> <a href="https://github.com/DaniCatGames/MathExpressions/issues"> Request Feature </a> </h4>
