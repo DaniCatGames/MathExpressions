@@ -1,198 +1,140 @@
 import { Functions } from "./Functions";
 import { Token, TokenType } from "./Misc";
 
-export function tokenize(expression: string): Token[] {
-	const result: Token[] = [];
-	const expressionSplit = expression.split("");
+export class Tokenizer {
+	result: Token[] = [];
+	characterBuffer: string[] = [];
+	numberBuffer: string[] = [];
 
-	const characterBuffer: string[] = [];
-	const numberBuffer: string[] = [];
-	expressionSplit.forEach((character) => {
-		if (isDigit(character)) {
-			numberBuffer.push(character);
-		}
-
-		if (isDot(character)) {
-			numberBuffer.push(character);
-		}
-
-		if (isLetter(character)) {
-			if (arrayFull(numberBuffer)) {
-				result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-				result.push(new Token(TokenType.Operator, "*"));
-				numberBuffer.clear();
+	tokenize(expression: string): Token[] {
+		expression.split("").forEach((character) => {
+			if (this.isDigit(character)) {
+				this.numberBuffer.push(character);
 			}
-			characterBuffer.push(character);
-		}
 
-		if (isOperator(character)) {
-			if (arrayFull(numberBuffer)) {
-				result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-				numberBuffer.clear();
-			} else if (arrayFull(characterBuffer)) {
-				const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-				buffer.forEach((char) => {
-					if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-					else result.push(new Token(TokenType.Operator, "*"));
-				});
-				characterBuffer.clear();
+			if (character === ".") {
+				this.numberBuffer.push(character);
 			}
-			result.push(new Token(TokenType.Operator, character));
-		}
 
-		if (isLeftParenthesis(character)) {
-			const CBJoined = characterBuffer.join("");
-			let isFunction: boolean = false;
-			Functions.forEach((func) => {
-				if (func.name === CBJoined) {
-					isFunction = true;
+			if (this.isLetter(character)) {
+				this.pushNumberBuffer(true);
+				this.characterBuffer.push(character);
+			}
+
+			if (this.isOperator(character)) {
+				if (this.peekNB() !== undefined) {
+					this.pushNumberBuffer();
+				} else if (this.peekCB() !== undefined) {
+					this.pushCharacterBuffer();
 				}
-			});
-
-			if (isFunction) {
-				if (
-					result[result.size() - 1].tokenType === TokenType.Literal ||
-					result[result.size() - 1].tokenType === TokenType.Variable ||
-					result[result.size() - 1].tokenType === TokenType.RightParenthesis
-				) {
-					result.push(new Token(TokenType.Operator, "*"));
-				}
-				result.push(new Token(TokenType.Function, CBJoined));
-				characterBuffer.clear();
-			} else {
-				if (arrayFull(numberBuffer)) {
-					result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-					result.push(new Token(TokenType.Operator, "*"));
-					numberBuffer.clear();
-				}
-
-				if (arrayFull(characterBuffer)) {
-					const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-					buffer.forEach((char) => {
-						if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-						else result.push(new Token(TokenType.Operator, char));
-					});
-					result.push(new Token(TokenType.Operator, "*"));
-				}
-			}
-			result.push(new Token(TokenType.LeftParenthesis, character));
-		}
-
-		if (isRightParenthesis(character)) {
-			if (arrayFull(numberBuffer) && arrayFull(characterBuffer)) {
-				result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-				numberBuffer.clear();
-
-				result.push(new Token(TokenType.Operator, "*"));
-
-				const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-				buffer.forEach((char) => {
-					if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-					else result.push(new Token(TokenType.Operator, "*"));
-				});
-				characterBuffer.clear();
-			} else if (arrayFull(numberBuffer)) {
-				result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-				numberBuffer.clear();
-			} else if (arrayFull(characterBuffer)) {
-				const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-				buffer.forEach((char) => {
-					if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-					else result.push(new Token(TokenType.Operator, "*"));
-				});
-				characterBuffer.clear();
+				this.result.push(new Token(TokenType.Operator, character));
 			}
 
-			result.push(new Token(TokenType.RightParenthesis, character));
-		}
-
-		if (isComma(character)) {
-			if (arrayFull(numberBuffer) && arrayFull(characterBuffer)) {
-				result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-				numberBuffer.clear();
-
-				result.push(new Token(TokenType.Operator, "*"));
-
-				const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-				buffer.forEach((char) => {
-					if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-					else result.push(new Token(TokenType.Operator, "*"));
+			if (character === "(") {
+				const CBJoined = this.characterBuffer.join("");
+				let isFunction: boolean = false;
+				Functions.forEach((func) => {
+					if (func.name === CBJoined) {
+						isFunction = true;
+					}
 				});
-				characterBuffer.clear();
-			} else if (arrayFull(numberBuffer)) {
-				result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-				numberBuffer.clear();
-			} else if (arrayFull(characterBuffer)) {
-				const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-				buffer.forEach((char) => {
-					if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-					else result.push(new Token(TokenType.Operator, "*"));
-				});
-				characterBuffer.clear();
+
+				if (isFunction) {
+					if (
+						this.peekResult().tokenType === TokenType.Literal ||
+						this.peekResult().tokenType === TokenType.Variable ||
+						this.peekResult().tokenType === TokenType.RightParenthesis
+					) {
+						this.result.push(new Token(TokenType.Operator, "*"));
+					}
+					this.result.push(new Token(TokenType.Function, CBJoined));
+					this.characterBuffer.clear();
+				} else {
+					this.pushBothBuffers();
+				}
+				this.result.push(new Token(TokenType.LeftParenthesis, character));
 			}
 
-			result.push(new Token(TokenType.FunctionArgumentSeparator, character));
-		}
-	});
+			if (character === ")") {
+				this.pushBothBuffers();
+				this.result.push(new Token(TokenType.RightParenthesis, character));
+			}
 
-	if (arrayFull(numberBuffer)) {
-		result.push(new Token(TokenType.Literal, tonumber(numberBuffer.join("")) as number));
-		numberBuffer.clear();
-	}
-
-	if (arrayFull(characterBuffer)) {
-		const buffer = insertMultiplicationOperatorIntoArray(characterBuffer);
-		buffer.forEach((char) => {
-			if (isLetter(char)) result.push(new Token(TokenType.Variable, char));
-			else result.push(new Token(TokenType.Operator, "*"));
+			if (character === ".") {
+				this.pushBothBuffers();
+				this.result.push(new Token(TokenType.FunctionArgumentSeparator, character));
+			}
 		});
-		characterBuffer.clear();
+
+		this.pushBothBuffers();
+
+		return this.result;
 	}
 
-	return result;
+	pushBothBuffers() {
+		if (this.peekNB() !== undefined && this.peekCB() !== undefined) {
+			this.pushNumberBuffer(true);
+			this.pushCharacterBuffer();
+		} else {
+			this.pushNumberBuffer();
+			this.pushCharacterBuffer();
+		}
+	}
+
+	pushNumberBuffer(pushMultiplication?: boolean) {
+		if (this.peekNB() !== undefined) {
+			this.result.push(new Token(TokenType.Literal, tonumber(this.numberBuffer.join("")) as number));
+			this.numberBuffer.clear();
+			if (pushMultiplication) this.result.push(new Token(TokenType.Operator, "*"));
+		}
+	}
+
+	pushCharacterBuffer(pushMultiplication?: boolean) {
+		if (this.peekCB() !== undefined) {
+			const buffer = insertCharacterInArray(this.characterBuffer, "*");
+			buffer.forEach((char) => {
+				if (this.isLetter(char)) this.result.push(new Token(TokenType.Variable, char));
+				else this.result.push(new Token(TokenType.Operator, "*"));
+			});
+			this.characterBuffer.clear();
+			if (pushMultiplication) this.result.push(new Token(TokenType.Operator, "*"));
+		}
+	}
+
+	peekNB() {
+		return this.numberBuffer[this.numberBuffer.size() - 1];
+	}
+
+	peekCB() {
+		return this.characterBuffer[this.characterBuffer.size() - 1];
+	}
+
+	peekResult() {
+		return this.result[this.result.size() - 1];
+	}
+
+	isDigit(character: string) {
+		return character.find("%d")[0] !== undefined;
+	}
+
+	isLetter(character: string) {
+		return character.find("%a")[0] !== undefined;
+	}
+
+	isOperator(character: string) {
+		const operators = "+-*/^";
+		return operators.find(character, 1, true)[0] !== undefined;
+	}
 }
 
-function arrayFull(array: unknown[]) {
-	return array[0] !== undefined;
-}
-
-function isDigit(character: string) {
-	return character.find("%d")[0] !== undefined;
-}
-
-function isLetter(character: string) {
-	return character.find("%a")[0] !== undefined;
-}
-
-function isOperator(character: string) {
-	const operators = "+-*/^";
-	return operators.find(character, 1, true)[0] !== undefined;
-}
-
-function isLeftParenthesis(character: string) {
-	return character === "(";
-}
-
-function isRightParenthesis(character: string) {
-	return character === ")";
-}
-
-function isComma(character: string) {
-	return character === ",";
-}
-
-function isDot(character: string) {
-	return character === ".";
-}
-
-function insertMultiplicationOperatorIntoArray(array: string[]) {
+function insertCharacterInArray(array: string[], character: string) {
 	const result = [];
 	let i = 0;
 	if (i < array.size()) {
 		result.push(array[i++]);
 	}
 	while (i < array.size()) {
-		result.push("*", array[i++]);
+		result.push(character, array[i++]);
 	}
 	return result;
 }

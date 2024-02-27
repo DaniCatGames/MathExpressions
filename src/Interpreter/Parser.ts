@@ -1,92 +1,106 @@
-import { Associativity, operators, Token, TokenType } from "./Misc";
+import { Associativity, ASTNode, Token, TokenType } from "./Misc";
 
-export function parse(input: Token[]) {
-	const outQueue: Token[] = [];
-	const operatorStack: Token[] = [];
-	let previousToken: Token | undefined;
+export class Parser {
+	outStack: ASTNode[] = [];
+	operatorStack: Token[] = [];
 
-	input.forEach((token, index) => {
-		if (token.tokenType === TokenType.Literal || token.tokenType === TokenType.Variable) {
-			print("LiteralVariable");
-			outQueue.push(token);
-		} else if (token.tokenType === TokenType.Function) {
-			print("Function");
-			operatorStack.push(token);
-		} else if (token.tokenType === TokenType.FunctionArgumentSeparator) {
-			print("FAS");
-			if (peek(operatorStack)) {
-				while (peek(operatorStack).tokenType !== TokenType.LeftParenthesis) {
-					outQueue.push(operatorStack.pop() as Token);
-				}
-			}
-		} else if (token.tokenType === TokenType.Operator) {
-			if (
-				token.value === "-" &&
-				(index === 0 || previousToken?.tokenType === TokenType.Operator || previousToken?.value === "(")
-			) {
-				print("OperatorUnary");
-				if (peek(operatorStack)) {
-					for (let i = 0; i < operatorStack.size(); i++) {
-						if (
-							peek(operatorStack).tokenType === TokenType.Operator &&
-							operators.u.precedence < peek(operatorStack).getPrecedence()
-						) {
-							if (peek(operatorStack)) outQueue.push(operatorStack.pop() as Token);
-						} else break;
+	constructor() {}
+
+	parse(input: Token[]) {
+		let previousToken: Token | undefined;
+
+		input.forEach((token, index) => {
+			if (token.tokenType === TokenType.Literal) {
+				this.outStack.push(new ASTNode(TokenType.Literal, token.value));
+			} else if (token.tokenType === TokenType.Variable) {
+				this.outStack.push(new ASTNode(TokenType.Variable, token.value));
+			} else if (token.tokenType === TokenType.Function) {
+				this.operatorStack.push(token);
+			} else if (token.tokenType === TokenType.FunctionArgumentSeparator) {
+				if (this.peekOperatorStack()) {
+					while (this.peekOperatorStack().tokenType !== TokenType.LeftParenthesis) {
+						this.operatorStackPop();
 					}
 				}
-				operatorStack.push(new Token(TokenType.Operator, "u"));
-			} else {
-				if (peek(operatorStack)) {
-					for (let i = 0; i < operatorStack.size(); i++) {
-						const peeked = peek(operatorStack);
-						print(peeked);
-						if (
-							peeked.tokenType !== TokenType.LeftParenthesis &&
-							(peeked.getPrecedence() > token.getPrecedence() ||
-								(peeked.getPrecedence() === token.getPrecedence() &&
-									token.getAssociativity() === Associativity.Left))
-						) {
-							outQueue.push(operatorStack.pop() as Token);
-						} else break;
+			} else if (token.tokenType === TokenType.Operator) {
+				if (
+					token.value === "-" &&
+					(index === 0 || previousToken?.tokenType === TokenType.Operator || previousToken?.value === "(")
+				) {
+					if (this.peekOperatorStack()) {
+						for (let i = 0; i < this.operatorStack.size(); i++) {
+							if (token.getPrecedence() < this.peekOperatorStack().getPrecedence()) {
+								this.operatorStackPop();
+							} else break;
+						}
 					}
+					this.operatorStack.push(new Token(TokenType.Operator, "u"));
+				} else {
+					if (this.peekOperatorStack()) {
+						for (let i = 0; i <= this.operatorStack.size(); i++) {
+							const peeked = this.peekOperatorStack();
+							if (
+								(token.getAssociativity() === Associativity.Left &&
+									token.getPrecedence() <= peeked.getPrecedence()) ||
+								(token.getAssociativity() === Associativity.Right &&
+									token.getPrecedence() < peeked.getPrecedence())
+							) {
+								this.operatorStackPop();
+							} else break;
+						}
+					}
+					this.operatorStack.push(token);
 				}
-				operatorStack.push(token);
-			}
-		} else if (token.tokenType === TokenType.LeftParenthesis) {
-			print("(");
-			operatorStack.push(token);
-		} else if (token.tokenType === TokenType.RightParenthesis) {
-			print(")");
-			if (peek(operatorStack)) {
-				while (peek(operatorStack).tokenType !== TokenType.LeftParenthesis) {
-					outQueue.push(operatorStack.pop() as Token);
+			} else if (token.tokenType === TokenType.LeftParenthesis) {
+				this.operatorStack.push(token);
+			} else if (token.tokenType === TokenType.RightParenthesis) {
+				if (this.peekOperatorStack()) {
+					while (this.peekOperatorStack().tokenType !== TokenType.LeftParenthesis) {
+						this.operatorStackPop();
+					}
+					this.operatorStack.pop();
 				}
-				operatorStack.pop();
+			} else if (this.peekOperatorStack()) {
+				if (this.peekOperatorStack().tokenType === TokenType.Function) {
+					this.operatorStackPop();
+				}
 			}
-		} else if (peek(operatorStack)) {
-			if (peek(operatorStack).tokenType === TokenType.Function) {
-				print("Function");
-				outQueue.push(operatorStack.pop() as Token);
-			}
-		}
-		previousToken = token;
-	});
+			previousToken = token;
+		});
 
-	return [...outQueue, ...reverseArray(operatorStack)];
-}
+		this.reverseOperatorStack();
+		while (this.peekOperatorStack()) this.operatorStackPop();
 
-function peek<T>(array: T[]) {
-	return array[array.size() - 1];
-}
-
-function reverseArray<T>(array: T[]) {
-	const out = [];
-	for (let i = array.size() - 1; i >= 0; i--) {
-		const valueAtIndex = array[i];
-
-		out.push(valueAtIndex);
+		const out = this.outStack[0];
+		this.outStack.clear();
+		this.operatorStack.clear();
+		return out;
 	}
 
-	return out;
+	private peekOperatorStack() {
+		return this.operatorStack[this.operatorStack.size() - 1];
+	}
+
+	private operatorStackPop() {
+		const operator = this.operatorStack.pop() as Token;
+		if (operator.isUnary()) {
+			const leftNode = this.outStack.pop();
+			this.outStack.push(new ASTNode(operator.tokenType, operator.value, leftNode));
+		} else {
+			const leftNode = this.outStack.pop();
+			const rightNode = this.outStack.pop();
+			this.outStack.push(new ASTNode(operator.tokenType, operator.value, rightNode, leftNode));
+		}
+	}
+
+	private reverseOperatorStack() {
+		const out = [];
+		for (let i = this.operatorStack.size() - 1; i >= 0; i--) {
+			const valueAtIndex = this.operatorStack[i];
+
+			out.push(valueAtIndex);
+		}
+
+		this.operatorStack = out;
+	}
 }

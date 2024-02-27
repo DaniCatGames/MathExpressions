@@ -1,6 +1,6 @@
 {
-	"name": "@rbxts/mathts",
-	"version": "0.1.1",
+	"name": "@rbxts/mathexpressions",
+	"version": "0.2.1",
 	"description": "",
 	"main": "out/init.lua",
 	"scripts": {
