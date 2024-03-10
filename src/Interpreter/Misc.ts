@@ -20,19 +20,28 @@ export class Token {
 	getPrecedence(): number {
 		if (this.tokenType === TokenType.Operator) {
 			return operators[this.value as keyof typeof operators].precedence;
-		} else return 0;
+		} else {
+			warn("Token is not an operator");
+			return 0;
+		}
 	}
 
 	getAssociativity(): Associativity {
 		if (this.tokenType === TokenType.Operator) {
 			return operators[this.value as keyof typeof operators].associativity;
-		} else return Associativity.Left;
+		} else {
+			warn("Token is not an operator");
+			return Associativity.Left;
+		}
 	}
 
 	isUnary(): boolean {
 		if (this.tokenType === TokenType.Operator) {
 			return operators[this.value as keyof typeof operators].unary;
-		} else return false;
+		} else {
+			warn("Token is not an operator");
+			return false;
+		}
 	}
 }
 
@@ -40,8 +49,7 @@ export class ASTNode {
 	constructor(
 		public nodeType: TokenType,
 		public value: string | number,
-		public leftChildNode?: ASTNode,
-		public rightChildNode?: ASTNode,
+		public children: ASTNode[] = [],
 	) {}
 }
 
@@ -82,3 +90,21 @@ export const operators = {
 		unary: false,
 	},
 };
+
+export function isConstant(node: ASTNode): boolean {
+	if (node.nodeType === TokenType.Literal) {
+		return true;
+	} else if (node.nodeType === TokenType.Variable) {
+		return false;
+	} else if (node.nodeType === TokenType.Operator) {
+		if (node.value === "u") return isConstant(node.children[0]);
+		return isConstant(node.children[0]) && isConstant(node.children[1]);
+	} else if (node.nodeType === TokenType.Function) {
+		let constant = true;
+		node.children.forEach((child) => {
+			constant = constant && isConstant(child);
+		});
+		return constant;
+	}
+	return false;
+}

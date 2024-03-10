@@ -10,27 +10,19 @@ export class Tokenizer {
 		expression.split("").forEach((character) => {
 			if (this.isDigit(character)) {
 				this.numberBuffer.push(character);
-			}
-
-			if (character === ".") {
+			} else if (character === ".") {
 				this.numberBuffer.push(character);
-			}
-
-			if (this.isLetter(character)) {
+			} else if (this.isLetter(character)) {
 				this.pushNumberBuffer(true);
 				this.characterBuffer.push(character);
-			}
-
-			if (this.isOperator(character)) {
+			} else if (this.isOperator(character)) {
 				if (this.peekNB() !== undefined) {
 					this.pushNumberBuffer();
 				} else if (this.peekCB() !== undefined) {
 					this.pushCharacterBuffer();
 				}
 				this.result.push(new Token(TokenType.Operator, character));
-			}
-
-			if (character === "(") {
+			} else if (character === "(") {
 				const CBJoined = this.characterBuffer.join("");
 				let isFunction: boolean = false;
 				Functions.forEach((func) => {
@@ -39,7 +31,7 @@ export class Tokenizer {
 					}
 				});
 
-				if (isFunction) {
+				if (isFunction && this.peekResult() !== undefined) {
 					if (
 						this.peekResult().tokenType === TokenType.Literal ||
 						this.peekResult().tokenType === TokenType.Variable ||
@@ -53,16 +45,14 @@ export class Tokenizer {
 					this.pushBothBuffers();
 				}
 				this.result.push(new Token(TokenType.LeftParenthesis, character));
-			}
-
-			if (character === ")") {
+			} else if (character === ")") {
 				this.pushBothBuffers();
 				this.result.push(new Token(TokenType.RightParenthesis, character));
-			}
-
-			if (character === ".") {
+			} else if (character === ",") {
 				this.pushBothBuffers();
 				this.result.push(new Token(TokenType.FunctionArgumentSeparator, character));
+			} else {
+				warn("Character not defined.");
 			}
 		});
 
@@ -86,6 +76,8 @@ export class Tokenizer {
 			this.result.push(new Token(TokenType.Literal, tonumber(this.numberBuffer.join("")) as number));
 			this.numberBuffer.clear();
 			if (pushMultiplication) this.result.push(new Token(TokenType.Operator, "*"));
+		} else {
+			warn("Number Buffer is empty.");
 		}
 	}
 
@@ -98,6 +90,8 @@ export class Tokenizer {
 			});
 			this.characterBuffer.clear();
 			if (pushMultiplication) this.result.push(new Token(TokenType.Operator, "*"));
+		} else {
+			warn("Character Buffer is empty.");
 		}
 	}
 

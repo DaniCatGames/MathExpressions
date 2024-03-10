@@ -9,7 +9,7 @@ export class Evaluator {
 			case TokenType.Literal:
 				return this.visitLiteral(node);
 			case TokenType.Variable:
-				return this.visitVariable(node) as number;
+				return this.visitVariable(node);
 			case TokenType.Operator:
 				if (node.value === "u") {
 					return this.visitUnary(node) as number;
@@ -28,48 +28,54 @@ export class Evaluator {
 	}
 
 	visitVariable(node: ASTNode) {
-		let value = 0;
+		let value;
 		this.variables.forEach((variable) => {
 			if (node.value === variable[0]) {
 				value = variable[1];
 			}
 		});
+		if (!value) {
+			warn("Variable not found, returning 0.");
+			value = 0;
+		}
 		return value;
 	}
 
 	visitUnary(node: ASTNode) {
-		if (node.leftChildNode) {
-			return -this.visit(node.leftChildNode);
+		if (node.children[0]) {
+			return -this.visit(node.children[0]);
+		} else {
+			warn("Unary node does not have any arguments.");
 		}
 	}
 
 	visitBinary(node: ASTNode) {
 		switch (node.value) {
 			case "+":
-				if (!node.leftChildNode || !node.rightChildNode) return;
-				return this.visit(node.leftChildNode) + this.visit(node.rightChildNode);
+				if (!node.children[0] || !node.children[1]) return;
+				return this.visit(node.children[0]) + this.visit(node.children[1]);
 			case "-":
-				if (!node.leftChildNode || !node.rightChildNode) return;
-				return this.visit(node.leftChildNode) - this.visit(node.rightChildNode);
+				if (!node.children[0] || !node.children[1]) return;
+				return this.visit(node.children[0]) - this.visit(node.children[1]);
 			case "*":
-				if (!node.leftChildNode || !node.rightChildNode) return;
-				return this.visit(node.leftChildNode) * this.visit(node.rightChildNode);
+				if (!node.children[0] || !node.children[1]) return;
+				return this.visit(node.children[0]) * this.visit(node.children[1]);
 			case "/":
-				if (!node.leftChildNode || !node.rightChildNode) return;
-				return this.visit(node.leftChildNode) / this.visit(node.rightChildNode);
+				if (!node.children[0] || !node.children[1]) return;
+				return this.visit(node.children[0]) / this.visit(node.children[1]);
 			case "^":
-				if (!node.leftChildNode || !node.rightChildNode) return;
-				return this.visit(node.leftChildNode) ** this.visit(node.rightChildNode);
+				if (!node.children[0] || !node.children[1]) return;
+				return this.visit(node.children[0]) ** this.visit(node.children[1]);
 			default:
-				return;
+				return warn("Operator is not recognised.");
 		}
 	}
 
 	visitFunction(node: ASTNode) {
 		for (const item of Functions) {
 			if (node.value === item.name) {
-				if (!node.leftChildNode) return;
-				return item.function(this.visit(node.leftChildNode));
+				if (!node.children[1]) return warn("Function does not have any arguments.");
+				return item.function(this.visit(node.children[0]));
 			}
 		}
 	}

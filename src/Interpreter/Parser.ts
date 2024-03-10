@@ -21,6 +21,8 @@ export class Parser {
 					while (this.peekOperatorStack().tokenType !== TokenType.LeftParenthesis) {
 						this.operatorStackPop();
 					}
+				} else {
+					warn("No operators on stack when encountering FAS.");
 				}
 			} else if (token.tokenType === TokenType.Operator) {
 				if (
@@ -59,6 +61,8 @@ export class Parser {
 						this.operatorStackPop();
 					}
 					this.operatorStack.pop();
+				} else {
+					warn("No operators on stack when encountering FAS.");
 				}
 			} else if (this.peekOperatorStack()) {
 				if (this.peekOperatorStack().tokenType === TokenType.Function) {
@@ -68,7 +72,6 @@ export class Parser {
 			previousToken = token;
 		});
 
-		this.reverseOperatorStack();
 		while (this.peekOperatorStack()) this.operatorStackPop();
 
 		const out = this.outStack[0];
@@ -85,22 +88,13 @@ export class Parser {
 		const operator = this.operatorStack.pop() as Token;
 		if (operator.isUnary()) {
 			const leftNode = this.outStack.pop();
-			this.outStack.push(new ASTNode(operator.tokenType, operator.value, leftNode));
+			if (!leftNode) return warn("No operator on stack when encountering unary operator.");
+			this.outStack.push(new ASTNode(operator.tokenType, operator.value, [leftNode]));
 		} else {
-			const leftNode = this.outStack.pop();
 			const rightNode = this.outStack.pop();
-			this.outStack.push(new ASTNode(operator.tokenType, operator.value, rightNode, leftNode));
+			const leftNode = this.outStack.pop();
+			if (!leftNode || !rightNode) return warn("No operators on stack when encountering binary operator.");
+			this.outStack.push(new ASTNode(operator.tokenType, operator.value, [leftNode, rightNode]));
 		}
-	}
-
-	private reverseOperatorStack() {
-		const out = [];
-		for (let i = this.operatorStack.size() - 1; i >= 0; i--) {
-			const valueAtIndex = this.operatorStack[i];
-
-			out.push(valueAtIndex);
-		}
-
-		this.operatorStack = out;
 	}
 }
