@@ -55,13 +55,11 @@ export class Differentiator {
 			let func: Function | undefined;
 			Functions.forEach((funct) => {
 				if (funct.name === node.value) {
-					func = funct;
+					return new ASTNode(TokenType.Operator, "*", [funct.derivative(node.children)]);
 				}
 			});
-
-			if (func) {
-				return new ASTNode(TokenType.Operator, "*", [func.derivative(node.children)]);
-			} else return new ASTNode(TokenType.Literal, 0);
+			
+			return new ASTNode(TokenType.Literal, 0);
 		} else {
 			return new ASTNode(TokenType.Literal, 0);
 		}
